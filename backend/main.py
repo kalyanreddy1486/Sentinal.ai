@@ -68,7 +68,7 @@ async def on_alert_created(alert, mechanic):
 async def lifespan(app: FastAPI):
     # Startup
     init_db()
-    print(f"{settings.APP_NAME} started")
+    print(f"{settings.APP_NAME} started v1.0")
     print(f"Debug mode: {settings.DEBUG}")
     
     # Start scheduled Grok generator
