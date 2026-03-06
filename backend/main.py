@@ -7,7 +7,7 @@ from config import get_settings
 from database import init_db
 from websocket.manager import ConnectionManager
 from websocket.machine_stream import MachineStreamManager
-from api import machines_router, alerts_router, copilot_router, maintenance_router, production_router, onboarding_router
+from api import machines_router, alerts_router, copilot_router, maintenance_router, production_router, onboarding_router, discovery_router, ginning_validation_router, twin_router
 from services.scheduled_grok_generator import ScheduledGrokGenerator
 from notifications.notification_manager import notification_manager
 from alerts.alert_manager import alert_manager
@@ -115,6 +115,9 @@ app.include_router(copilot_router)
 app.include_router(maintenance_router)
 app.include_router(production_router)
 app.include_router(onboarding_router)
+app.include_router(discovery_router)
+app.include_router(ginning_validation_router)
+app.include_router(twin_router)
 
 
 @app.get("/")
