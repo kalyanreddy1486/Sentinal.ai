@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL AI v2</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@500;700;900&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        :root {
+            --void: #02040a;
+            --deep: #060c16;
+            --surface: #0a1220;
+            --cyan: #00c8ff;
+            --neon: #00ffcc;
+            --red: #ff2d55;
+            --amber: #ffaa00;
+            --purple: #bf5af2;
+            --text: #d0e8ff;
+            --muted: #2a4a6a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            cursor: none !important;
+        }
+
+        body {
+            background-color: var(--void);
+            color: var(--text);
+            font-family: 'Barlow Condensed', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Custom Cursor */
+        #cursor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 16px;
+            height: 16px;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+        }
+
+        #cursor::before,
+        #cursor::after {
+            content: '';
+            position: absolute;
+            background: var(--cyan);
+        }
+
+        #cursor::before {
+            top: 7px;
+            left: 0;
+            width: 16px;
+            height: 2px;
+        }
+
+        #cursor::after {
+            top: 0;
+            left: 7px;
+            width: 2px;
+            height: 16px;
+        }
+
+        .particle {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            background: var(--cyan);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            animation: fadeParticle 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeParticle {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(0);
+            }
+        }
+
+        /* Animated Background */
+        .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .bg-hex {
+            background-image: url('data:image/svg+xml;utf8,<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M20 0l20 10v20l-20 10L0 30V10z" fill="none" stroke="%2300c8ff" stroke-width="0.5"/></svg>');
+            opacity: 0.04;
+        }
+
+        .bg-glow {
+            background: radial-gradient(circle at 10% 10%, rgba(0, 200, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(191, 90, 242, 0.05) 0%, transparent 40%);
+        }
+
+        .bg-scanline {
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.25) 51%);
+            background-size: 100% 4px;
+            animation: scanline 10s linear infinite;
+            opacity: 0.3;
+        }
+
+        @keyframes scanline {
+            0% {
+                background-position: 0 0;
+            }
+
+            100% {
+                background-position: 0 100vh;
+            }
+        }
+
+        /* Typography */
+        h1,
+        h2,
+        h3,
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Top Bar */
+        #topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            backdrop-filter: blur(10px);
+            background: rgba(6, 12, 22, 0.8);
+            border-bottom: 1px solid var(--muted);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-text {
+            font-size: 24px;
+            color: var(--cyan);
+            letter-spacing: 2px;
+        }
+
+        .logo-sub {
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--muted);
+        }
+
+        .hex-spin {
+            width: 30px;
+            height: 30px;
+            animation: spin 10s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        #nav-tabs {
+            display: flex;
+            gap: 30px;
+            height: 100%;
+            align-items: center;
+        }
+
+        .tab {
+            font-size: 14px;
+            color: var(--muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            position: relative;
+            padding: 22px 5px;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: var(--text);
+            transform: translateY(-2px);
+        }
+
+        .tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--cyan);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .tab:hover::after,
+        .tab.active::after {
+            width: 100%;
+            box-shadow: 0 0 10px var(--cyan);
+        }
+
+        .tab.active {
+            color: var(--cyan);
+        }
+
+        .top-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        #clock {
+            font-size: 18px;
+            color: var(--text);
+        }
+
+        .stat-pill {
+            font-size: 12px;
+            padding: 4px 10px;
+            background: var(--surface);
+            border-left: 3px solid var(--cyan);
+            border-radius: 2px;
+        }
+
+        .stat-pill.alert {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        /* Content Views */
+        .view {
+            display: none;
+            position: absolute;
+            top: 64px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 20px;
+            overflow-y: auto;
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+
+        .view.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        /* Shared Components */
+        .glass-card {
+            background: rgba(10, 18, 32, 0.7);
+            border: 1px solid var(--muted);
+            backdrop-filter: blur(5px);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .clip-card {
+            clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+            background: var(--surface);
+            border: 1px solid var(--muted);
+            padding: 15px;
+            position: relative;
+        }
+
+        button {
+            background: rgba(0, 200, 255, 0.1);
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            padding: 8px 16px;
+            font-family: 'JetBrains Mono';
+            font-size: 12px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background: var(--cyan);
+            color: var(--void);
+            box-shadow: 0 0 15px var(--cyan);
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        h3 {
+            color: var(--cyan);
+            font-size: 18px;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--muted);
+        }
+
+        /* VIEW 1: COMMAND CENTER */
+        #kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .kpi-card {
+            border-top: 2px solid var(--cyan);
+            padding: 15px;
+        }
+
+        .kpi-val {
+            font-size: 36px;
+            color: var(--cyan);
+        }
+
+        .kpi-val.neon {
+            color: var(--neon);
+        }
+
+        .kpi-val.amber {
+            color: var(--amber);
+        }
+
+        .kpi-lbl {
+            font-size: 12px;
+            color: var(--muted);
+            letter-spacing: 1px;
+        }
+
+        .kpi-wm {
+            position: absolute;
+            font-size: 80px;
+            opacity: 0.05;
+            top: -10px;
+            right: -10px;
+            pointer-events: none;
+        }
+
+        #ticker-wrap {
+            background: var(--surface);
+            border: 1px solid var(--muted);
+            height: 30px;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        #ticker {
+            white-space: nowrap;
+            display: inline-block;
+            animation: marquee 20s linear infinite;
+            font-size: 14px;
+        }
+
+        #ticker-wrap:hover #ticker {
+            animation-play-state: paused;
+        }
+
+        @keyframes marquee {
+            0% {
+                transform: translateX(100%);
+            }
+
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        #machine-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .machine-card header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .tier-badge {
+            padding: 4px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid;
+        }
+
+        .tier-1 {
+            border-color: var(--red);
+            color: var(--red);
+            box-shadow: 0 0 10px rgba(255, 45, 85, 0.4);
+            animation: pulseRed 2s infinite;
+        }
+
+        .tier-2 {
+            border-color: var(--amber);
+            color: var(--amber);
+            animation: pulseAmber 3s infinite;
+        }
+
+        .tier-3 {
+            border-color: var(--neon);
+            color: var(--neon);
+        }
+
+        @keyframes pulseRed {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.5
+            }
+        }
+
+        @keyframes pulseAmber {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.7
+            }
+        }
+
+        .gauge-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 15px 0;
+        }
+
+        .sensors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .sensor-chip {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px 10px;
+            border: 1px solid rgba(42, 74, 106, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .sensor-chip.flash {
+            background: rgba(255, 170, 0, 0.3);
+        }
+
+        .s-name {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .s-val {
+            font-size: 14px;
+            color: var(--cyan);
+        }
+
+        .m-footer {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--muted);
+            padding-top: 10px;
+        }
+
+        .critical-glow {
+            border: 2px solid var(--red) !important;
+            animation: borderPulse 1s infinite alternate;
+        }
+
+        @keyframes borderPulse {
+            100% {
+                box-shadow: inset 0 0 20px rgba(255, 45, 85, 0.3), 0 0 20px rgba(255, 45, 85, 0.3);
+            }
+        }
+
+        .critical-wm {
+            position: absolute;
+            font-size: 40px;
+            color: var(--red);
+            opacity: 0.1;
+            transform: rotate(-30deg);
+            top: 30%;
+            left: 10%;
+            pointer-events: none;
+        }
+
+        /* VIEW 2: COPILOT */
+        #copilot-split {
+            display: flex;
+            height: calc(100vh - 100px);
+            gap: 20px;
+        }
+
+        #chat-area {
+            flex: 6;
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+            border: 1px solid var(--muted);
+        }
+
+        .chat-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--muted);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .msg {
+            max-width: 80%;
+            padding: 15px;
+            font-family: 'JetBrains Mono';
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .msg.ai {
+            background: rgba(191, 90, 242, 0.1);
+            border-left: 3px solid var(--purple);
+            align-self: flex-start;
+        }
+
+        .msg.user {
+            background: rgba(0, 200, 255, 0.1);
+            border-right: 3px solid var(--cyan);
+            align-self: flex-end;
+            transform: translateX(20px);
+            animation: slideIn 0.3s forwards;
+        }
+
+        @keyframes slideIn {
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        .chat-input {
+            padding: 15px;
+            border-top: 1px solid var(--muted);
+        }
+
+        .chips {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+        }
+
+        .chip {
+            background: var(--deep);
+            border: 1px solid var(--muted);
+            font-size: 11px;
+            padding: 5px 10px;
+            color: var(--text);
+            white-space: nowrap;
+        }
+
+        .chip:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .input-bar {
+            display: flex;
+            background: var(--deep);
+            border: 1px solid var(--muted);
+            padding: 10px;
+            align-items: center;
+        }
+
+        .input-bar input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-family: 'JetBrains Mono';
+            outline: none;
+            margin-left: 10px;
+        }
+
+        #telemetry-panel {
+            flex: 4;
+            background: var(--surface);
+            border: 1px solid var(--muted);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mach-pills {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .m-pill {
+            padding: 5px 10px;
+            border: 1px solid var(--muted);
+            font-size: 12px;
+            color: var(--muted);
+            cursor: pointer;
+        }
+
+        .m-pill.active {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .tele-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-family: 'JetBrains Mono';
+            font-size: 12px;
+        }
+
+        .tele-lbl {
+            width: 80px;
+            color: var(--muted);
+        }
+
+        .tele-bar-bg {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 0 15px;
+            position: relative;
+        }
+
+        .tele-bar-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            transition: 0.6s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .tele-val {
+            width: 60px;
+            text-align: right;
+            color: var(--cyan);
+        }
+
+        .diag-box {
+            margin-top: auto;
+            background: var(--deep);
+            border: 1px solid var(--muted);
+            padding: 15px;
+        }
+
+        /* VIEW 3: STRESS LAB */
+        #stress-view {
+            background: radial-gradient(circle at center, rgba(255, 45, 85, 0.05) 0%, transparent 70%);
+        }
+
+        .stress-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            height: calc(100vh - 100px);
+        }
+
+        .fault-btn {
+            width: 100%;
+            text-align: left;
+            margin-bottom: 10px;
+            padding: 15px;
+            background: var(--deep);
+            border: 1px solid var(--muted);
+            transition: 0.3s;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .fault-btn:hover {
+            border-color: var(--red);
+            background: rgba(255, 45, 85, 0.1);
+        }
+
+        .fault-btn.active {
+            border-color: var(--red);
+            background: rgba(255, 45, 85, 0.2);
+            box-shadow: 0 0 15px rgba(255, 45, 85, 0.3);
+        }
+
+        .slider-wrap {
+            margin-bottom: 20px;
+        }
+
+        .slider-lbl {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 5px;
+            font-family: 'JetBrains Mono';
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: var(--deep);
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--red);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--red);
+        }
+
+        #run-btn {
+            width: 100%;
+            text-align: center;
+            border-color: var(--red);
+            color: var(--red);
+            font-size: 18px;
+            padding: 15px;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #run-btn:hover {
+            background: var(--red);
+            color: #fff;
+        }
+
+        /* VIEW 4: ARCHITECTURE */
+        #arch-diagram {
+            height: 300px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 50px;
+            position: relative;
+            margin-bottom: 40px;
+        }
+
+        .arch-node {
+            width: 180px;
+            text-align: center;
+            background: var(--surface);
+            border: 1px solid var(--muted);
+            padding: 15px;
+            position: relative;
+            z-index: 2;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+
+        .node-top {
+            height: 4px;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .arch-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .cost-compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* VIEW 5: TWIN FORGE */
+        #twin-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 100px);
+        }
+
+        .twin-card {
+            background: var(--surface);
+            border: 1px solid var(--muted);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .twin-bg {
+            position: absolute;
+            inset: 0;
+            opacity: 0.1;
+            transition: background 1s;
+            z-index: 0;
+        }
+
+        .twin-header {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            z-index: 1;
+        }
+
+        .twin-img {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+            position: relative;
+        }
+
+        .twin-sensors {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1;
+            font-family: 'JetBrains Mono';
+            font-size: 12px;
+        }
+
+        /* SVGs */
+        .svg-blade {
+            transform-origin: center;
+            animation: spinBlade 2s linear infinite;
+        }
+
+        @keyframes spinBlade {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .svg-piston {
+            animation: pumpPiston 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes pumpPiston {
+            to {
+                transform: translateY(20px);
+            }
+        }
+
+        .svg-flow {
+            stroke-dasharray: 10;
+            animation: dashFlow 1s linear infinite;
+        }
+
+        @keyframes dashFlow {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+
+        /* VIEW 6: ROI ENGINE */
+        .roi-split {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 40px;
+        }
+
+        .giant-num {
+            font-size: 80px;
+            color: var(--neon);
+            text-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+            line-height: 1;
+        }
+
+        .roi-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .roi-card {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 2px solid var(--cyan);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="cursor"></div>
+    <div class="bg-layer bg-hex"></div>
+    <div class="bg-layer bg-glow"></div>
+    <div class="bg-layer bg-scanline"></div>
+
+    <!-- TOP BAR -->
+    <header id="topbar">
+        <div class="logo-area">
+            <svg class="hex-spin" viewBox="0 0 100 100">
+                <polygon points="50 5, 95 27.5, 95 72.5, 50 95, 5 72.5, 5 27.5" fill="none" stroke="#00c8ff"
+                    stroke-width="4" />
+            </svg>
+            <div>
+                <div class="orbitron logo-text">SENTINEL</div>
+                <div class="logo-sub">AI PREDICTIVE MAINTENANCE v2.0</div>
+            </div>
+        </div>
+        <div id="nav-tabs">
+            <div class="tab active" data-target="v-command">COMMAND</div>
+            <div class="tab" data-target="v-copilot">COPILOT</div>
+            <div class="tab" data-target="v-stress">STRESS LAB</div>
+            <div class="tab" data-target="v-arch">ARCHITECTURE</div>
+            <div class="tab" data-target="v-twin">TWIN FORGE</div>
+            <div class="tab" data-target="v-roi">ROI ENGINE</div>
+        </div>
+        <div class="top-right">
+            <div class="stat-pill">MACHINES: 4</div>
+            <div class="stat-pill alert" id="alert-pill">ALERTS: 1</div>
+            <div class="stat-pill">API/DAY: 14</div>
+            <div class="orbitron" id="clock">00:00:00</div>
+        </div>
+    </header>
+
+    <!-- VIEW 1: COMMAND CENTER -->
+    <div id="v-command" class="view active">
+        <div id="kpi-row">
+            <div class="glass-card kpi-card">
+                <div class="kpi-wm">76</div>
+                <div class="orbitron kpi-val" id="kpi-health">0.0%</div>
+                <div class="kpi-lbl">FLEET HEALTH</div>
+            </div>
+            <div class="glass-card kpi-card">
+                <div class="kpi-wm">48</div>
+                <div class="orbitron kpi-val neon" id="kpi-savings">$0.0K</div>
+                <div class="kpi-lbl">DOWNTIME SAVED</div>
+            </div>
+            <div class="glass-card kpi-card">
+                <div class="kpi-wm">91</div>
+                <div class="orbitron kpi-val amber" id="kpi-acc">0.0%</div>
+                <div class="kpi-lbl">GEMINI ACCURACY</div>
+            </div>
+            <div class="glass-card kpi-card">
+                <div class="kpi-wm">6</div>
+                <div class="orbitron kpi-val" id="kpi-lead">0.0h</div>
+                <div class="kpi-lbl">FAILURE LEAD TIME</div>
+            </div>
+        </div>
+
+        <div id="ticker-wrap">
+            <div id="ticker" class="mono">
+                🔴 CRITICAL — Pump Gamma — Bearing Failure — 87% confidence — 8 min to breach — John Smith notified │ ⚠
+                WARNING — Compressor Beta — 11 consecutive rises — Tier 2 active │ ✅ Motor Delta — All nominal │ ✅
+                Turbine Alpha — All nominal
+            </div>
+        </div>
+
+        <div id="machine-grid">
+            <!-- Rendered via JS -->
+        </div>
+    </div>
+
+    <!-- VIEW 2: COPILOT -->
+    <div id="v-copilot" class="view">
+        <div id="copilot-split">
+            <div id="chat-area">
+                <div class="chat-header">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#bf5af2">
+                        <circle cx="12" cy="12" r="10" />
+                    </svg>
+                    <div class="orbitron" style="color:var(--purple)">SENTINEL COPILOT</div>
+                    <div class="mono" style="font-size:10px; color:var(--muted)">Powered by Claude 3.5 Sonnet</div>
+                    <div style="width:8px;height:8px;background:var(--neon);border-radius:50%;margin-left:auto;"></div>
+                </div>
+                <div class="chat-messages" id="chat-logs">
+                    <div class="msg ai" id="welcome-msg"></div>
+                </div>
+                <div class="chat-input">
+                    <div class="chips">
+                        <button class="chip" onclick="sendChat('WHY IS PUMP GAMMA FAILING?')">WHY IS PUMP GAMMA
+                            FAILING?</button>
+                        <button class="chip" onclick="sendChat('SAFEST MAINTENANCE WINDOW?')">SAFEST MAINTENANCE
+                            WINDOW?</button>
+                        <button class="chip" onclick="sendChat('FLEET HEALTH COMPARISON')">FLEET HEALTH
+                            COMPARISON</button>
+                    </div>
+                    <div class="input-bar">
+                        <span style="color:var(--cyan)">></span>
+                        <input type="text" id="chat-in" placeholder="Ask Claude..."
+                            onkeypress="if(event.key==='Enter') sendChat()">
+                        <button onclick="sendChat()">SEND</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="telemetry-panel">
+                <div class="mach-pills" id="tele-pills"></div>
+                <div class="orbitron" style="font-size:24px; margin-bottom: 5px" id="tele-name">NAME</div>
+                <div class="tier-badge tier-3" id="tele-tier" style="display:inline-block; margin-bottom:20px">TIER 3
+                </div>
+                <div id="tele-sensors"></div>
+                <div style="margin-top:20px; display:flex; justify-content:center"><canvas id="tele-gauge" width="150"
+                        height="150"></canvas></div>
+                <div class="diag-box">
+                    <div class="mono" style="color:var(--muted); margin-bottom:10px">LAST DIAGNOSIS</div>
+                    <div id="tele-diag" class="mono" style="color:var(--text); font-size:12px">Nominal operation. No
+                        anomalies detected in the last 24 hours.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 3: STRESS LAB -->
+    <div id="v-stress" class="view">
+        <h2 class="orbitron" style="color:var(--red); margin-bottom:20px">⚡ FAULT INJECTION SIMULATOR</h2>
+        <div class="stress-grid">
+            <div class="glass-card" style="padding:20px; border-color:var(--red)">
+                <button class="fault-btn" onclick="setFault('bearing')">
+                    <div>
+                        <div class="orbitron">🔩 BEARING FAILURE</div>
+                        <div class="mono" style="font-size:10px;color:var(--muted)">vib↑ temp↑ rpm↓</div>
+                    </div>
+                </button>
+                <button class="fault-btn" onclick="setFault('thermal')">
+                    <div>
+                        <div class="orbitron">🌡 THERMAL OVERLOAD</div>
+                        <div class="mono" style="font-size:10px;color:var(--muted)">temp↑↑</div>
+                    </div>
+                </button>
+
+                <div style="margin-top:30px">
+                    <div class="slider-wrap">
+                        <div class="slider-lbl"><span>DEGRADATION</span><span id="sl-deg">0%</span></div>
+                        <input type="range" id="rng-deg" min="0" max="100" value="0">
+                    </div>
+                    <div class="slider-wrap">
+                        <div class="slider-lbl"><span>TEMP STRESS</span><span id="sl-tmp">+0°C</span></div>
+                        <input type="range" id="rng-tmp" min="0" max="50" value="0">
+                    </div>
+                </div>
+
+                <h3 style="color:var(--muted); font-size:12px; margin:20px 0 10px">TARGET MACHINE</h3>
+                <div class="mach-pills" style="margin-bottom:30px">
+                    <div class="m-pill active">Pump Gamma</div>
+                </div>
+
+                <div id="run-btn" onclick="toggleStress()">RUN TEST</div>
+            </div>
+
+            <div class="glass-card" style="padding:20px">
+                <canvas id="stress-chart" height="100"></canvas>
+                <div style="margin-top:20px; display:flex; gap:10px">
+                    <div style="flex:1; height:4px; background:var(--muted)" id="t3-bar"></div>
+                    <div style="flex:1; height:4px; background:var(--muted)" id="t2-bar"></div>
+                    <div style="flex:1; height:4px; background:var(--muted)" id="t1-bar"></div>
+                </div>
+                <div
+                    style="display:flex; justify-content:space-between; margin-top:5px; font-size:10px; font-family:'JetBrains Mono'">
+                    <span style="color:var(--neon)">TIER 3 (Rules)</span>
+                    <span style="color:var(--amber)">TIER 2 (ML Anomaly)</span>
+                    <span style="color:var(--red)">TIER 1 (Gemini AI)</span>
+                </div>
+                <div id="stress-diag" class="glass-card clip-card hidden"
+                    style="margin-top:20px; border-color:var(--red)">
+                    <div class="orbitron" style="color:var(--red); font-size:20px">CRITICAL ALERT DISPATCHED</div>
+                    <div class="mono" style="font-size:12px; margin-top:10px">
+                        > FAILURE: Bearing seize predicted<br>
+                        > CONFIDENCE: <span id="str-conf">0</span>%<br>
+                        > ACTION: Shutting down Pump Gamma in 60s
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 4: ARCHITECTURE -->
+    <div id="v-arch" class="view">
+        <h2 class="orbitron" style="margin-bottom:30px; color:var(--cyan)">PIPELINE TOPOLOGY</h2>
+        <div id="arch-diagram">
+            <svg class="arch-svg">
+                <path id="arch-path" d="M140 150 L840 150" stroke="#2a4a6a" stroke-width="2" stroke-dasharray="5 5"
+                    fill="none" />
+            </svg>
+            <div class="arch-node">
+                <div class="node-top" style="background:var(--purple)"></div>
+                <div class="mono" style="font-size:10px">DATA STREAM</div>
+                <div class="orbitron">SENSORS</div>
+                <div class="mono" style="font-size:10px;color:var(--muted);margin-top:5px">100Hz Telemetry</div>
+            </div>
+            <div class="arch-node">
+                <div class="node-top" style="background:var(--cyan)"></div>
+                <div class="mono" style="font-size:10px">LOCAL EDGE</div>
+                <div class="orbitron">3-TIER DB</div>
+                <div class="mono" style="font-size:10px;color:var(--muted);margin-top:5px">Rules + Isolation Forest
+                </div>
+            </div>
+            <div class="arch-node">
+                <div class="node-top" style="background:var(--amber)"></div>
+                <div class="mono" style="font-size:10px">CLOUD AI</div>
+                <div class="orbitron">GEMINI 1.5</div>
+                <div class="mono" style="font-size:10px;color:var(--muted);margin-top:5px">Root Cause Analysis</div>
+            </div>
+            <div class="arch-node">
+                <div class="node-top" style="background:var(--red)"></div>
+                <div class="mono" style="font-size:10px">DISPATCH</div>
+                <div class="orbitron">ALERT/UI</div>
+                <div class="mono" style="font-size:10px;color:var(--muted);margin-top:5px">Twilio + React</div>
+            </div>
+        </div>
+
+        <div class="cost-compare">
+            <div class="clip-card">
+                <h3 class="orbitron">V1 APPROACH: SEND EVERY READING</h3>
+                <div class="mono" style="font-size:12px; color:var(--muted)">7,200 API calls/day</div>
+                <div style="height:20px; background:var(--red); width:100%; margin:10px 0"></div>
+                <div class="orbitron" style="font-size:24px; color:var(--red)">$21.60 / DAY</div>
+            </div>
+            <div class="clip-card" style="border-color:var(--cyan)">
+                <h3 class="orbitron" style="color:var(--cyan)">V2 APPROACH: 3-TIER ENGINE</h3>
+                <div class="mono" style="font-size:12px; color:var(--muted)">15 API calls/day (Anomalies Only)</div>
+                <div style="height:20px; background:var(--cyan); width:2%; margin:10px 0"></div>
+                <div class="orbitron" style="font-size:24px; color:var(--cyan)">$0.04 / DAY</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 5: TWIN FORGE -->
+    <div id="v-twin" class="view">
+        <div id="twin-grid">
+            <!-- Rendered in JS -->
+        </div>
+    </div>
+
+    <!-- VIEW 6: ROI ENGINE -->
+    <div id="v-roi" class="view">
+        <div class="roi-split">
+            <div class="glass-card clip-card">
+                <h2 class="orbitron" style="color:var(--neon)">ROI ENGINE</h2>
+                <div class="mono" style="color:var(--muted); font-size:12px; margin-bottom:20px">Parameter simulation
+                </div>
+
+                <div class="chips" style="margin-bottom:20px">
+                    <button class="chip" onclick="setRoi(12, 8, 180, 40)">AUTO</button>
+                    <button class="chip" onclick="setRoi(50, 25, 300, 50)">STEEL</button>
+                    <button class="chip" onclick="setRoi(120, 40, 500, 60)">OIL & GAS</button>
+                </div>
+
+                <div class="slider-wrap">
+                    <div class="slider-lbl"><span>FLEET SIZE</span><span id="roi-val1">12</span></div><input
+                        type="range" id="roi-1" min="1" max="200" value="12" oninput="calcRoi()">
+                </div>
+                <div class="slider-wrap">
+                    <div class="slider-lbl"><span>INCIDENTS / YR</span><span id="roi-val2">8</span></div><input
+                        type="range" id="roi-2" min="1" max="100" value="8" oninput="calcRoi()">
+                </div>
+                <div class="slider-wrap">
+                    <div class="slider-lbl"><span>COST PER INCIDENT ($K)</span><span id="roi-val3">$180K</span></div>
+                    <input type="range" id="roi-3" min="10" max="2000" value="180" oninput="calcRoi()">
+                </div>
+                <div class="slider-wrap">
+                    <div class="slider-lbl"><span>DOWNTIME REDUCTION</span><span id="roi-val4">40%</span></div><input
+                        type="range" id="roi-4" min="10" max="80" value="40" oninput="calcRoi()">
+                </div>
+            </div>
+
+            <div class="glass-card"
+                style="padding:30px; display:flex; flex-direction:column; justify-content:center; align-items:center">
+                <div class="orbitron giant-num" id="roi-total">$576,000</div>
+                <div class="mono" style="color:var(--muted); margin-top:10px">ESTIMATED ANNUAL SAVINGS</div>
+
+                <div class="roi-cards" style="width:100%">
+                    <div class="roi-card">
+                        <div class="mono" style="font-size:10px;color:var(--muted)">INCIDENTS PREVENTED</div>
+                        <div class="orbitron" style="font-size:20px" id="roi-r1">3 / yr</div>
+                    </div>
+                    <div class="roi-card">
+                        <div class="mono" style="font-size:10px;color:var(--muted)">PAYBACK PERIOD</div>
+                        <div class="orbitron" style="font-size:20px" id="roi-r2">14 Days</div>
+                    </div>
+                </div>
+
+                <div style="margin-top:30px; width:100%; text-align:center">
+                    <div class="orbitron" style="font-size:40px; color:var(--red)">$1.4 TRILLION</div>
+                    <div class="mono" style="font-size:12px; color:var(--muted)">lost annually by top 500 companies to
+                        unplanned downtime</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data Models
+        const machines = {
+            A: { id: 'A', name: 'Turbine Alpha', type: 'Gas Turbine', bay: 'Bay 1', health: 82, fp: 18, tier: 3, s: { temp: 89, pressure: 86, rpm: 3100, flow: 42 }, crit: false, color: '--neon' },
+            B: { id: 'B', name: 'Compressor Beta', type: 'Air Compressor', bay: 'Bay 2', health: 64, fp: 44, tier: 2, s: { temp: 81, pressure: 82, flow: 140, vib: 2.9 }, crit: false, color: '--amber' },
+            C: { id: 'C', name: 'Pump Gamma', type: 'Hydraulic Pump', bay: 'Bay 3', health: 31, fp: 75, tier: 1, s: { temp: 95, vib: 4.1, rpm: 2940, pressure: 79 }, crit: true, color: '--red' },
+            D: { id: 'D', name: 'Motor Delta', type: 'Drive Motor', bay: 'Bay 4', health: 91, fp: 9, tier: 3, s: { temp: 72, vib: 1.8, current: 38, rpm: 2850 }, crit: false, color: '--neon' }
+        };
+        const mArr = Object.values(machines);
+        let selectedM = 'C';
+
+        // Custom Cursor
+        const cursor = document.getElementById('cursor');
+        document.addEventListener('mousemove', e => {
+            cursor.style.left = e.clientX + 'px'; cursor.style.top = e.clientY + 'px';
+            if (Math.random() > 0.5) createParticle(e.clientX, e.clientY);
+        });
+        function createParticle(x, y) {
+            const p = document.createElement('div'); p.className = 'particle';
+            p.style.left = (x + (Math.random() - 0.5) * 10) + 'px';
+            p.style.top = (y + (Math.random() - 0.5) * 10) + 'px';
+            document.body.appendChild(p); setTimeout(() => p.remove(), 400);
+        }
+
+        // Clock Update
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-US', { hour12: false });
+        }, 1000);
+
+        // Tab Setup
+        document.querySelectorAll('.tab').forEach(t => {
+            t.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+                document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+                t.classList.add('active');
+                const target = document.getElementById(t.dataset.target);
+                target.classList.add('active');
+            });
+        });
+
+        // KPI Animation
+        function animNum(id, end, pre = '', post = '', dur = 1500) {
+            const el = document.getElementById(id); let start = null;
+            const step = (ts) => {
+                if (!start) start = ts; const cur = Math.min((ts - start) / dur, 1);
+                // ease out cubic
+                const ease = 1 - Math.pow(1 - cur, 3);
+                el.innerText = pre + (end * ease).toFixed(1) + post;
+                if (cur < 1) requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+        }
+        animNum('kpi-health', 76.4, '', '%'); animNum('kpi-savings', 48.2, '$', 'K');
+        animNum('kpi-acc', 91.3, '', '%'); animNum('kpi-lead', 6.2, '', 'h');
+
+        // Draw Canvas Gauge function
+        function drawGauge(canvasId, value, isCrit) {
+            const cvs = document.getElementById(canvasId); if (!cvs) return;
+            const ctx = cvs.getContext('2d'); const cx = cvs.width / 2, cy = cvs.height / 2, r = cx - 10;
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            ctx.lineWidth = 12; ctx.lineCap = 'round';
+            // BG
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0.75 * Math.PI, 2.25 * Math.PI); ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.stroke();
+            // Fill
+            const endAngle = 0.75 * Math.PI + (1.5 * Math.PI * (value / 100));
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0.75 * Math.PI, endAngle);
+            ctx.strokeStyle = isCrit ? '#ff2d55' : (value > 70 ? '#00ffcc' : '#ffaa00'); ctx.stroke();
+            // Text
+            ctx.fillStyle = '#d0e8ff'; ctx.font = 'bold 24px Orbitron'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(Math.round(value) + '%', cx, cy - 5);
+            ctx.font = '10px JetBrains Mono'; ctx.fillStyle = '#2a4a6a'; ctx.fillText('HEALTH', cx, cy + 15);
+        }
+
+        // Render Machine Grid
+        function renderMachines() {
+            const grid = document.getElementById('machine-grid'); grid.innerHTML = '';
+            mArr.forEach(m => {
+                const shtml = Object.entries(m.s).map(([k, v]) => `
+                    <div class="sensor-chip" id="chip-${m.id}-${k}">
+                        <span class="s-name">${k.toUpperCase()}</span>
+                        <span class="s-val">${(v).toFixed(1)}</span>
+                    </div>
+                `).join('');
+
+                grid.innerHTML += `
+                    <div class="clip-card machine-card ${m.crit ? 'critical-glow' : ''}">
+                        ${m.crit ? '<div class="critical-wm">CRITICAL</div>' : ''}
+                        <header>
+                            <div><div class="orbitron" style="font-size:18px; color:var(--${m.crit ? 'red' : 'cyan'})">${m.name}</div><div class="mono" style="font-size:10px">${m.type} | ${m.bay}</div></div>
+                            <div class="tier-badge tier-${m.tier}">TIER ${m.tier}</div>
+                        </header>
+                        <div class="gauge-area"><canvas id="gauge-${m.id}" width="120" height="120"></canvas></div>
+                        <div class="sensors">${shtml}</div>
+                        <div class="m-footer">
+                            <div class="mono" style="font-size:10px;"><span style="color:var(--neon)">●</span> LIVE DATA</div>
+                            <button onclick="document.querySelector('[data-target=\\'v-copilot\\']').click(); selMach('${m.id}')">ANALYZE →</button>
+                        </div>
+                    </div>
+                `;
+            });
+            setTimeout(() => { mArr.forEach(m => drawGauge('gauge-' + m.id, m.health, m.crit)); }, 50);
+        }
+
+        // Render Copilot Panels
+        function selMach(id) {
+            selectedM = id; const m = machines[id];
+            // Pills
+            document.getElementById('tele-pills').innerHTML = mArr.map(x => `<div class="m-pill ${x.id == id ? 'active' : ''}" onclick="selMach('${x.id}')">${x.name}</div>`).join('');
+            document.getElementById('tele-name').innerText = m.name;
+            document.getElementById('tele-name').style.color = `var(${m.color})`;
+            document.getElementById('tele-tier').className = `tier-badge tier-${m.tier}`;
+            document.getElementById('tele-tier').innerText = `TIER ${m.tier}`;
+
+            drawGauge('tele-gauge', m.health, m.crit);
+
+            document.getElementById('tele-sensors').innerHTML = Object.entries(m.s).map(([k, v]) => `
+                <div class="tele-row"><div class="tele-lbl">${k.toUpperCase()}</div><div class="tele-bar-bg"><div class="tele-bar-fill" style="width:${Math.min(v, 100)}%; background:var(${m.crit ? '--red' : '--cyan'})"></div></div><div class="tele-val">${(v).toFixed(1)}</div></div>
+            `).join('');
+        }
+
+        // Chat logic
+        const msgTpl = `"SENTINEL COPILOT ONLINE. I have eyes on all 4 machines. \n⚠ PRIORITY ALERT: Pump Gamma — Bay 3 — Bearing failure at 87% confidence. Vibration: 4.1mm/s rising. Temperature: 95°C rising. RPM: 2,940 dropping. John Smith notified at 09:15. Estimated time to threshold breach: 7 minutes.\nWhat do you need to know?"`;
+
+        function typeText(el, text, i = 0) {
+            if (i < text.length) { el.innerHTML += text.charAt(i); setTimeout(() => typeText(el, text, i + 1), 15); }
+        }
+        setTimeout(() => typeText(document.getElementById('welcome-msg'), msgTpl), 1000);
+
+        function sendChat(forceText) {
+            const inEl = document.getElementById('chat-in');
+            const txt = forceText || inEl.value; if (!txt) return;
+            inEl.value = '';
+
+            const chat = document.getElementById('chat-logs');
+            chat.innerHTML += `<div class="msg user">${txt}</div>`;
+
+            let res = "Analyzing telemetry... data is nominal.";
+            if (txt.toLowerCase().includes('why')) res = "Based on spectral analysis of vibration data (4.1mm/s), the 2X RPM harmonic indicates severe inner race defect on the main drive bearing. Temperature rise correlates directly with mechanical friction.";
+            if (txt.toLowerCase().includes('window')) res = "Recommendation: Safe to run for 6 hours. Schedule shutdown at 16:00 shift change. Mechanic John Smith is standing by with replacement part #B-992.";
+
+            setTimeout(() => {
+                const id = 'msg-' + Date.now();
+                chat.innerHTML += `<div class="msg ai" id="${id}"></div>`;
+                typeText(document.getElementById(id), res);
+                chat.scrollTop = chat.scrollHeight;
+            }, 500);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        // ROI logic
+        function setRoi(a, b, c, d) {
+            document.getElementById('roi-1').value = a; document.getElementById('roi-2').value = b;
+            document.getElementById('roi-3').value = c; document.getElementById('roi-4').value = d;
+            calcRoi();
+        }
+        function calcRoi() {
+            const f = +document.getElementById('roi-1').value;
+            const i = +document.getElementById('roi-2').value;
+            const c = +document.getElementById('roi-3').value;
+            const d = +document.getElementById('roi-4').value;
+            document.getElementById('roi-val1').innerText = f;
+            document.getElementById('roi-val2').innerText = i;
+            document.getElementById('roi-val3').innerText = '$' + c + 'K';
+            document.getElementById('roi-val4').innerText = d + '%';
+
+            const total = i * (c * 1000) * (d / 100);
+            document.getElementById('roi-total').innerText = '$' + total.toLocaleString();
+            document.getElementById('roi-r1').innerText = Math.round(i * (d / 100)) + ' / yr';
+        }
+
+        // Twin forge render
+        function renderTwins() {
+            const grid = document.getElementById('twin-grid');
+            grid.innerHTML = mArr.map(m => `
+                <div class="glass-card twin-card" style="border-color:var(${m.color})">
+                    <div class="twin-bg" style="background:radial-gradient(circle, var(${m.color}) 0%, transparent 70%)"></div>
+                    <div class="twin-header"><span class="orbitron">${m.name}</span><span class="mono" style="color:var(${m.color})">H:${Math.round(m.health)}%</span></div>
+                    <div class="twin-img">
+                        <svg width="150" height="150" viewBox="0 0 100 100" stroke="var(${m.color})" fill="none" class="${m.id === 'A' ? 'svg-blade' : m.id === 'B' ? 'svg-piston' : ''}"><circle cx="50" cy="50" r="40" stroke-width="2"/><circle cx="50" cy="50" r="10" stroke-width="2"/><line x1="50" y1="10" x2="50" y2="90" stroke-width="2"/><line x1="10" y1="50" x2="90" y2="50" stroke-width="2"/></svg>
+                    </div>
+                    <div class="twin-sensors">${Object.entries(m.s).map(([k, v]) => `<span>${k}:${v.toFixed(1)}</span>`).join('')}</div>
+                </div>
+            `).join('');
+        }
+
+        // Initialize
+        renderMachines(); selMach('C'); renderTwins(); calcRoi();
+
+        // Simulation Tick
+        setInterval(() => {
+            mArr.forEach(m => {
+                const keys = Object.keys(m.s);
+                keys.forEach(k => { m.s[k] += (Math.random() - 0.5) * 1.5; });
+                if (m.crit) {
+                    m.s.temp += 0.3; m.s.vib += 0.08; m.health -= 0.5;
+                    const el = document.getElementById(`chip-${m.id}-temp`);
+                    if (el) { el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 200); }
+                } else {
+                    m.health += (Math.random() - 0.5) * 0.5;
+                }
+                m.health = Math.max(0, Math.min(100, m.health));
+            });
+            renderMachines(); selMach(selectedM); renderTwins();
+        }, 2000);
+
+        // Stress chart
+        const ctx = document.getElementById('stress-chart').getContext('2d');
+        const sc = new Chart(ctx, {
+            type: 'line', data: {
+                labels: Array(30).fill(''), datasets: [
+                    { label: 'Temp', borderColor: '#ff2d55', data: Array(30).fill(90), tension: 0.4, pointRadius: 0 },
+                    { label: 'Vib', borderColor: '#ffaa00', data: Array(30).fill(40), tension: 0.4, pointRadius: 0 }
+                ]
+            },
+            options: { animation: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false } } }
+        });
+
+        let stressInt = null;
+        function toggleStress() {
+            const btn = document.getElementById('run-btn');
+            if (stressInt) { clearInterval(stressInt); stressInt = null; btn.innerText = 'RUN TEST'; btn.style.color = 'var(--red)'; btn.style.background = ''; return; }
+
+            btn.innerText = '■ ABORT TEST'; btn.style.background = 'rgba(255,45,85,0.2)';
+            let tick = 0;
+            stressInt = setInterval(() => {
+                sc.data.datasets[0].data.shift(); sc.data.datasets[0].data.push(90 + tick * 2);
+                sc.data.datasets[1].data.shift(); sc.data.datasets[1].data.push(40 + tick);
+                sc.update();
+
+                if (tick > 5) document.getElementById('t2-bar').style.background = 'var(--amber)';
+                if (tick > 10) {
+                    document.getElementById('t1-bar').style.background = 'var(--red)';
+                    document.getElementById('stress-diag').classList.remove('hidden');
+                    document.getElementById('str-conf').innerText = Math.min(99, 50 + tick * 3);
+                }
+                tick++;
+            }, 300);
+        }
+        function setFault(n) { document.querySelectorAll('.fault-btn').forEach(x => x.classList.remove('active')); event.currentTarget.classList.add('active'); }
+    </script>
+</body>
+
+</html>
